@@ -1,0 +1,58 @@
+sequenceDiagram
+    participant IS as Initializing Service
+    participant MS as Monitor Supervisor
+    participant BM as Base Monitor
+    participant HM as HTTP Monitor
+    participant N as Normalize
+    participant SM as State Manager
+    participant EH as Error Handler
+    participant RE as Rules Evaluator
+
+    IS->>MS: start_monitor(http_config)
+    activate MS
+    
+    Note over MS: Validates monitor configuration
+    
+    MS->>BM: init(http_config)
+    activate BM
+    
+    BM->>HM: init_connection(http_config)
+    activate HM
+    
+    Note over HM: Configures HTTP client
+    HM-->>BM: :ok
+    
+    BM->>SM: init_state(monitor_id)
+    Note over SM: Initializes state store with:<br/>- monitor data<br/>- error history<br/>- connection status
+    SM-->>BM: :ok
+    
+    BM->>EH: init_handler(monitor_id)
+    Note over EH: Initializes with:<br/>- Recovery strategies<br/>- Error classifications<br/>- Retry policies
+    EH-->>BM: :ok
+    
+    BM-->>MS: {:ok, monitor_pid}
+    deactivate BM
+    
+    MS-->>IS: {:ok, monitor_pid}
+    deactivate MS
+    
+    Note over HM: Time passes...<br/>HTTP interval triggers
+    
+    HM->>HM: read_data()
+    Note over HM: Successful HTTP request
+    
+    HM->>N: normalize_data(http_response)
+    activate N
+    
+    N-->>HM: normalized_data
+    deactivate N
+    
+    HM->>BM: handle_data(normalized_data)
+    
+    BM->>SM: update_state(monitor_id, normalized_data)
+    Note over SM: Stores:<br/>- Current data<br/>- Historical data<br/>- Error history<br/>- Connection state
+    SM-->>BM: :ok
+    
+    BM->>RE: evaluate_rules(normalized_data)
+    
+    deactivate HM

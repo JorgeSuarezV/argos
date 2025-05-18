@@ -1,0 +1,32 @@
+sequenceDiagram
+    participant PM as Protocol Monitor
+    participant BM as Base Monitor
+    participant N as Normalize
+    participant EH as Error Handler
+    participant SM as State Manager
+
+    Note over PM: Error occurs during<br/>protocol operation
+    PM->>BM: Reports error event
+    BM->>N: Sends raw error data
+    
+    Note over N: Normalizes error into<br/>standard format
+    
+    N->>EH: Sends normalized error
+    
+    activate EH
+    Note over EH: 1. Classifies error<br/>2. Determines recovery strategy
+    
+    par Error Handler Actions
+        EH->>SM: Updates monitor state with error
+        EH->>EH: Logs error with metadata
+        EH->>EH: Collects error metrics
+    end
+    
+    alt Recovery Possible
+        EH->>BM: Sends recovery strategy
+        BM->>PM: Executes recovery action
+    else Recovery Not Possible
+        EH->>BM: Sends failure notification
+        BM->>PM: Initiates shutdown sequence
+    end
+    deactivate EH

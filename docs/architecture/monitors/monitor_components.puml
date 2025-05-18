@@ -1,0 +1,108 @@
+@startuml Argos Monitor Components
+
+' Style definitions
+skinparam componentStyle uml2
+skinparam backgroundColor white
+skinparam handwritten false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam component {
+    BackgroundColor LightBlue
+    BorderColor DarkBlue
+    ArrowColor DarkBlue
+}
+
+' Title
+title Argos Monitor Components Architecture
+
+' Components
+package "Core System" {
+    [Supervisor] as supervisor
+    [Configuration Manager] as config_manager
+    [State Store] as state_store
+    [CLI Interface] as cli
+}
+
+package "Monitor System" {
+    interface "Monitor Interface" as monitor_interface
+    [HTTP Monitor] as http_monitor
+    [WebSocket Monitor] as ws_monitor
+    [Device Monitor] as device_monitor
+    [Data Normalizer] as normalizer
+}
+
+package "Rule System" {
+    [Rule Engine] as rule_engine
+    [Condition Evaluator] as condition_eval
+    [Rule Store] as rule_store
+    [Historical Data Access] as historical_data
+}
+
+package "Action System" {
+    [Action Executor] as action_exec
+    [Email Action] as email_action
+    [HTTP Action] as http_action
+    [DB Action] as db_action
+    [Report Action] as report_action
+}
+
+' Relationships
+supervisor --> config_manager : manages
+supervisor --> monitor_interface : supervises
+supervisor --> rule_engine : supervises
+supervisor --> action_exec : supervises
+
+config_manager --> state_store : updates
+config_manager --> rule_store : updates
+cli --> config_manager : commands
+
+monitor_interface <|.. http_monitor : implements
+monitor_interface <|.. ws_monitor : implements
+monitor_interface <|.. device_monitor : implements
+
+http_monitor --> normalizer : processes
+ws_monitor --> normalizer : processes
+device_monitor --> normalizer : processes
+
+normalizer --> state_store : stores
+normalizer --> historical_data : stores
+
+rule_engine --> condition_eval : uses
+rule_engine --> state_store : reads
+rule_engine --> historical_data : reads
+rule_engine --> rule_store : reads
+
+condition_eval --> state_store : evaluates
+condition_eval --> historical_data : evaluates
+
+action_exec --> email_action : executes
+action_exec --> http_action : executes
+action_exec --> db_action : executes
+action_exec --> report_action : executes
+
+rule_engine --> action_exec : triggers
+state_store --> action_exec : provides context
+
+' Notes
+note right of supervisor
+  Manages the lifecycle of all
+  components and handles
+  hot reloading
+end note
+
+note right of monitor_interface
+  Common interface for all
+  monitor types
+end note
+
+note right of rule_engine
+  Evaluates conditions and
+  triggers actions
+end note
+
+note right of action_exec
+  Executes actions based on
+  rule triggers
+end note
+
+@enduml 

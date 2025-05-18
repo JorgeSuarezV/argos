@@ -1,0 +1,212 @@
+@startuml Argos Monitor System
+
+' Style definitions
+skinparam componentStyle uml2
+skinparam backgroundColor white
+skinparam handwritten false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam class {
+    BackgroundColor<<actor>> LightBlue
+    BorderColor<<actor>> Black
+    ArrowColor Black
+    FontName Arial
+}
+
+' Title
+title Argos Monitor System Architecture
+
+' Interfaces
+interface "MonitorInterface" as MI {
+    +start()
+    +stop()
+    +get_state()
+    +update_config()
+}
+
+interface "ProtocolInterface" as PI {
+    +init_connection(config)
+    +read_data()
+    +handle_connection_error()
+    +get_connection_status()
+}
+
+interface "NormalizationInterface" as NI {
+    +normalize_data(raw_data)
+    +normalize_error(error)
+    +normalize_connection_status(status)
+}
+
+' Components
+package "Monitor System" {
+    class MonitorSupervisor <<supervisor>> {
+        +start_link()
+        +init()
+        +start_monitor()
+        +stop_monitor()
+    }
+
+    class StateManager <<actor>> {
+        +start_link()
+        +init_state()
+        +update_state()
+        +get_state()
+        +get_state_version()
+        +add_error()
+        +get_error_history()
+    }
+
+    class ErrorHandler <<actor>> {
+        +start_link()
+        +handle_error()
+        +log_error()
+        - calculate_backoff()
+    }
+
+    class MonitorProtocol <<interface>> {
+        +config_schema()
+        +init_monitor()
+    }
+
+    class HTTPMonitor <<actor>> {
+        +start_link()
+        +init()
+        +handle_info(:poll)
+        - make_request()
+    }
+
+    class WebSocketMonitor <<actor>> {
+        +start_link()
+        +init()
+        +handle_info(:connect)
+        - handle_frame()
+    }
+
+    class MQTTMonitor <<actor>> {
+        +start_link()
+        +init()
+        +handle_info(:connect)
+        - handle_message()
+    }
+
+    class BaseMonitor <<actor>> {
+        -config: MonitorConfig
+        -state: MonitorState
+        +init(config)
+        +handle_data(data)
+        +get_state()
+    }
+
+    class Normalize <<service>> {
+        +normalize_data(raw_data, schema)
+        +normalize_error(error)
+        +normalize_connection_status(status)
+    }
+}
+
+' Data Structures
+note right of NI
+  Normalized Data Format:
+  {
+    monitor_id: String,
+    timestamp: DateTime,
+    status: atom,
+    data: map | nil,
+    error: map | nil,
+    meta: {
+      connection_status: atom,
+      latency: integer,
+      retry_count: integer
+    }
+  }
+end note
+
+note right of PI
+  Protocol Requirements:
+  - Read-only operations
+  - Connection management
+  - Error handling
+  - Status reporting
+end note
+
+' Protocol Configurations
+note right of HTTPMonitor
+  HTTP Configuration:
+  {
+    "url": "https://api.example.com/data",
+    "method": "GET",
+    "headers": {
+      "Authorization": "Bearer ${parameters.iot_token}",
+      "Accept": "application/json"
+    },
+    "interval": 10000,
+    "timeout": 3000,
+    "follow_redirect": true,
+    "verify_ssl": true,
+    "request_body": null
+  }
+end note
+
+note right of WebSocketMonitor
+  WebSocket Configuration:
+  {
+    "url": "ws://ws.example.com/socket",
+    "protocols": ["json"],
+    "headers": {
+      "Authorization": "Bearer ${parameters.iot_token}"
+    },
+    "ping_interval": 30000,
+    "reconnect": true
+  }
+end note
+
+note right of MQTTMonitor
+  MQTT Configuration:
+  {
+    "broker_url": "mqtt://broker.example.com:1883",
+    "topic": "sensors/temperature",
+    "qos": 1,
+    "client_id": "argos_mqtt_1",
+    "username": "user",
+    "password": "pass",
+    "keepalive": 60,
+    "clean_session": true,
+    "reconnect_interval": 5000
+  }
+end note
+
+' Relationships and Implementations
+BaseMonitor ..|> MI
+HTTPMonitor ..|> PI
+WebSocketMonitor ..|> PI
+MQTTMonitor ..|> PI
+Normalize ..|> NI
+
+' Supervision and Data Flow
+MonitorSupervisor --> HTTPMonitor : supervises
+MonitorSupervisor --> WebSocketMonitor : supervises
+MonitorSupervisor --> MQTTMonitor : supervises
+
+' Data Flow
+HTTPMonitor --> Normalize : raw data
+WebSocketMonitor --> Normalize : raw data
+MQTTMonitor --> Normalize : raw data
+
+Normalize --> StateManager : normalized data
+Normalize --> ErrorHandler : normalized errors
+
+' Connection Management
+HTTPMonitor --> StateManager : reports state
+WebSocketMonitor --> StateManager : reports state
+MQTTMonitor --> StateManager : reports state
+
+HTTPMonitor --> ErrorHandler : reports errors
+WebSocketMonitor --> ErrorHandler : reports errors
+MQTTMonitor --> ErrorHandler : reports errors
+
+' Protocol Implementations
+HTTPMonitor ..|> MonitorProtocol : implements
+WebSocketMonitor ..|> MonitorProtocol : implements
+MQTTMonitor ..|> MonitorProtocol : implements
+
+@enduml
