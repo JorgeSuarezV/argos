@@ -1,0 +1,28 @@
+{
+    "monitors": {
+        "single": [
+         {
+           "name": "http_monitor_1",
+           "type": "http",
+           "config": {
+             "url": "https://localhost:8080/success",
+             "method": "GET",
+             "headers": {
+               "Authorization": "Bearer ${parameters.iot_token}",
+               "Accept": "application/json"
+             },
+             "interval": 10000,
+             "timeout": 3000,
+             "follow_redirect": true,
+             "verify_ssl": true,
+             "request_body": null
+           },
+           "retry_policy": {
+             "max_retries": 5,
+             "backoff_strategy": "exponential",
+             "retry_timeout": 2000
+           }
+         }
+        ]
+    }
+}
