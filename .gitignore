@@ -16,12 +16,13 @@ deps
 .cursor
 erl_crash.dump
 mix.lock
+todo_list.md
 
 # Ignore argos file, but not the directory
 /argos
 !/argos/
-
-
+/doc
+bin
 
 # Ignore .fetch files in case you like to edit your project deps locally.
 /.fetch

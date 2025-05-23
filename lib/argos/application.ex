@@ -5,6 +5,7 @@ defmodule Argos.Application do
     children = [
       # Add your supervisors/workers here if needed
     ]
+
     opts = [strategy: :one_for_one, name: Argos.Supervisor]
     Supervisor.start_link(children, opts)
   end

@@ -1,4 +1,4 @@
-defmodule Argos.Monitors.MonitorProtocol do
+defmodule Argos.Monitors.Behavior do
   @moduledoc """
   This behaviour defines the contract that all monitor protocols must implement.
 
@@ -24,7 +24,7 @@ defmodule Argos.Monitors.MonitorProtocol do
   cleanup like closing connections or unsubscribing from topics.
   """
 
-  alias Argos.Config.SchemaTypes
+  alias Argos.Monitors.Types
 
   @doc """
   Returns all modules that implement this protocol.
@@ -34,7 +34,7 @@ defmodule Argos.Monitors.MonitorProtocol do
     type = Keyword.fetch!(opts, :type)
 
     quote do
-      @behaviour Argos.Monitors.MonitorProtocol
+      @behaviour Argos.Monitors.Behavior
       use GenServer
 
       @monitor_type unquote(type)
@@ -42,17 +42,17 @@ defmodule Argos.Monitors.MonitorProtocol do
 
       def __monitor_type__, do: @monitor_type
 
+      @spec start_link(Types.monitor_config()) :: GenServer.on_start()
       def start_link(config) do
         GenServer.start_link(__MODULE__, config)
       end
 
       @impl true
-      def config_schema, do: raise "Monitor #{__MODULE__} must implement config_schema/0"
+      def config_schema, do: raise("Monitor #{__MODULE__} must implement config_schema/0")
 
-      defoverridable [config_schema: 0]
+      defoverridable config_schema: 0
     end
   end
-
 
   @doc """
   Returns the configuration schema for this monitor type.
@@ -91,7 +91,7 @@ defmodule Argos.Monitors.MonitorProtocol do
   end
   ```
   """
-  @callback config_schema() :: [SchemaTypes.config_field()]
+  @callback config_schema() :: Types.config_schema()
 
   @doc """
   Executes a recovery action for the monitor.
@@ -100,5 +100,5 @@ defmodule Argos.Monitors.MonitorProtocol do
 
   The monitor should handle the recovery command appropriately based on its implementation.
   """
-  @callback recover(recovery_action :: Argos.Types.recovery_action()) :: :ok | {:error, String.t()}
+  @callback recover(Types.error_response_type()) :: :ok | {:error, String.t()}
 end
